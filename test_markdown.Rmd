@@ -1,5 +1,5 @@
 ---
-title: "Test_markdown"
+title: "How to generate a bigwig track of a TF motif across ChIP-seq peaks"
 knit: (function(input_file, encoding) {
   out_dir <- 'docs';
   rmarkdown::render(input_file,
@@ -14,11 +14,27 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## R Markdown
+## What is a TF motif / binding site? 
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+A common question when analyzing ChIP-seq data is whether the "peaks" actually contain a sequence "motif" for the transcription factor (TF) that was IPed? To get an answer, we first have to define what we mean by **motif**. There are several ways of doing though: 
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+* you search for a **consensus match**; i.e. you know the TF binds the sequence TATTTA very well, maybe it also tolerates TATTCA, therefore you search for all instances of TATTYA.
+
+This is pretty simple, but unfortunately it is not that accurate, as TFs bind DNA in a very "flexible" manner. Although there is typically an optimal binding site, TFs can still recognize many sub-optimal seqeunces. As long as the the numerous individual interactions between the TF's amino acids and the DNA bases of a given sequence stretch are energetically more favorable than those of a random (non-specfic) site in the genome, the TF is considered to display "specficity" for that site. Given this modular binding behavior, each DNA base substitution will impact distinct protein-DNA interactions and destabilize the optimal recognition mode to a different degree.  As a result, it is important to repesent TF binding specfiicty in an accurate, quantitative model. In simplified terms, the most popular approach is incubating a TF in vitro with randomized DNA seqeunces, seperating bound from unbound DNA, subjecting the bound fraction to high-throughput seqeuncing and counting which DNA seqeunce string of a given length (k) achieved the highest seqeuncing counts. Having obtained these k-mer count tables, there are two ways to construct a quantitative model:
+
+* the most popular one: **PWM** of Position Weight Matris, which first alligns all k-mers and then weighs each base in terms of how frequently it was found at a given position within the alignment. The result is a 4*k table, where the 4 rows represent the 4 different bases. (Typically these tables are normalized and log-transformed). To obtain a score for any given sequence, you can use the PWM as a look-up table and add the values you get along each position of the TF-DNA binding site.
+
+* a **PSAM** or position-specific affinity matrix. Works by identifying the optimal site and setting the seqeunce enrichment (from the sequencing results) of that site to 1. Enrichments of all seqeunces that are at most one base substituiton away from and which are normalized to the optimal site are then used to populate the 4*k table, similar to the PWM. These tables instead of representing frequencies (PWM) represent the fold reduction in affinity compared to the optimal site each base substitution causes. Instead of adding values, you can multiply along the columns to obtain a score for any random DNA sequence. 
+
+Both PWM and PSAM do not consider combinatorial effects, those when base-substitution impact TF binding non-linearily, meaning that they either impact binding less or more than the sum of each substitution by itself.
+
+
+## How do I find motifs in ChIP-seq peaks?
+
+In order to know whether a ChIP-seq peak has a binding site, we can first compute a binding site scoring profile. To do so, we compute a score for each k-mer window in our peak seqeunce using our **PSAM** or **PWM** (many TFs have already been assayed and PWMs or PSAMs are available from different databases). E.g. a peak sequence of 100-bp and a PWM of length 8 has 100-8+1 = 93 individual 8-mer sequences for which we have to compute a score. Since DNA is double-stranded we also have to compute a score for the reverse-complement sequence.
+
+Let's look at an example:
+
 
 ```{r cars}
 summary(cars)
